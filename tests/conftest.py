@@ -32,6 +32,66 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "internet: mark test as requiring an internet connection")
 
 
+@pytest.fixture
+def petstore_spec():
+    """A small petstore-style OpenAPI 3.0 specification."""
+    return {
+        "openapi": "3.0.0",
+        "info": {"title": "Petstore", "version": "1.0.0"},
+        "paths": {
+            "/pets/{petId}": {
+                "get": {
+                    "summary": "Get a pet",
+                    "operationId": "getPet",
+                    "parameters": [
+                        {
+                            "name": "petId",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "integer", "minimum": 1, "maximum": 100},
+                        },
+                        {
+                            "name": "verbose",
+                            "in": "query",
+                            "schema": {"type": "boolean", "default": False},
+                        },
+                    ],
+                    "responses": {"200": {"description": "ok"}},
+                },
+                "post": {
+                    "operationId": "createPet",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Pet"}
+                            }
+                        },
+                    },
+                    "responses": {"200": {"description": "ok"}},
+                },
+            }
+        },
+        "components": {
+            "schemas": {
+                "Pet": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "status": {
+                            "type": "string",
+                            "enum": ["available", "pending", "sold"],
+                        },
+                        "tags": {"type": "array", "items": {"type": "string"}},
+                        "age": {"type": "integer"},
+                    },
+                }
+            }
+        },
+    }
+
+
 @pytest.fixture(autouse=True)
 def module_cleanup():
     """Cleanup Panel extensions after each test."""
