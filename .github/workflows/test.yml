@@ -109,6 +109,8 @@ jobs:
     name: Run pre-commit
     needs: [setup]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -122,6 +124,9 @@ jobs:
         if: needs.setup.outputs.img_change == 'true'
         with:
           extra_args: -a --hook-stage manual oxipng || true --
+      - name: Set git credentials
+        if: needs.setup.outputs.img_change == 'true'
+        run: git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
       - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7
         if: needs.setup.outputs.img_change == 'true'
         with:
