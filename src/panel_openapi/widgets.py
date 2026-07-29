@@ -53,7 +53,7 @@ def unwrap_nullable(schema: Schema) -> Schema:
 
 
 def _raw_type(schema: Schema) -> str | None:
-    """The schema's declared type, without collapsing lists."""
+    """Return the schema's declared type, without collapsing lists."""
     type_ = schema.type
     if type_ is None:
         return None
