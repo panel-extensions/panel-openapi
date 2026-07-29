@@ -41,7 +41,6 @@ test-310 = ["py310", "test"]
 test-311 = ["py311", "test"]
 test-312 = ["py312", "test"]
 test-313 = ["py313", "test"]
-test-ui = ["py312", "test", "test-ui"]
 docs = ["py312", "docs"]
 build = ["py312", "build"]
 lint = { features = ["lint"], no-default-feature = true }
@@ -61,24 +60,6 @@ test = { cmd = "pytest", depends-on = ["postinstall"] }
 test-coverage = { cmd = "pytest --cov=panel_openapi --cov-report=xml --cov-report=term-missing", depends-on = [
   "postinstall",
 ] }
-
-[feature.test-ui]
-channels = ["microsoft"]
-
-[feature.test-ui.dependencies]
-playwright = { version = "*", channel = "microsoft" }
-pytest-playwright = { version = "*", channel = "microsoft" }
-pytest-rerunfailures = "*"
-pytest-xdist = "*"
-jupyter_server = "*"
-esbuild = "*"
-
-[feature.test-ui.tasks]
-_install-ui = 'playwright install chromium'
-
-[feature.test-ui.tasks.test-ui]
-cmd = 'pytest tests/ui --ui --browser chromium -n logical --dist loadgroup --reruns 3 --reruns-delay 10'
-depends-on = ["postinstall", "_install-ui"]
 
 # =============================================
 # =================== DOCS ====================
