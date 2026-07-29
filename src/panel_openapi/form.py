@@ -14,9 +14,13 @@ from typing import Any
 import panel as pn
 import panel_material_ui as pmui
 import param
-from openapi_pydantic import OpenAPI, Operation
+from openapi_pydantic import OpenAPI
+from openapi_pydantic import Operation
 
-from .schema import Field, collect_fields, get_operation, load_openapi
+from .schema import Field
+from .schema import collect_fields
+from .schema import get_operation
+from .schema import load_openapi
 from .widgets import schema_to_widget
 
 _EMPTY = (None, "", [], {})
@@ -112,9 +116,7 @@ class OpenAPIForm(pn.viewable.Viewer):
         self._headers = dict(headers or {})
         self.response = pmui.Column(sizing_mode="stretch_width")
         self.form = pmui.Column(sizing_mode="stretch_width")
-        self._submit_button = pmui.Button(
-            label="Submit", variant="contained", on_click=self._submit
-        )
+        self._submit_button = pmui.Button(label="Submit", variant="contained", on_click=self._submit)
         # Errors on the initial build are programming errors, so they propagate.
         self._rebuild()
 
@@ -134,7 +136,7 @@ class OpenAPIForm(pn.viewable.Viewer):
         return {field.name: widget for field, widget in self._widgets}
 
     def get_values(self, location: str | None = None) -> dict[str, Any]:
-        """The values that would be sent, keyed by field name.
+        """Return the values that would be sent, keyed by field name.
 
         JSON text areas are returned parsed. Fields left empty and fields marked
         ``readOnly`` are omitted, mirroring the request.
@@ -209,9 +211,7 @@ class OpenAPIForm(pn.viewable.Viewer):
     def _rebuild(self) -> None:
         """Rebuild the widgets for the current path and method."""
         self._operation = get_operation(self._openapi, self.path, self.method)
-        self._fields = collect_fields(
-            self._openapi, self._operation, skip_read_only=self.skip_read_only
-        )
+        self._fields = collect_fields(self._openapi, self._operation, skip_read_only=self.skip_read_only)
         self._widgets = []
         for field in self._fields:
             widget = schema_to_widget(field.name, field.schema, field.required)
@@ -323,9 +323,7 @@ class OpenAPIForm(pn.viewable.Viewer):
             return None
         if missing:
             names = ", ".join(missing)
-            self.response[:] = [
-                pmui.Alert(object=f"Missing required fields: {names}", severity="warning")
-            ]
+            self.response[:] = [pmui.Alert(object=f"Missing required fields: {names}", severity="warning")]
             return None
 
         if extra is not None:
@@ -350,9 +348,7 @@ class OpenAPIForm(pn.viewable.Viewer):
 
     def _render_response(self, response: Any) -> list[Any]:
         severity = "success" if response.is_success else "error"
-        status = pmui.Alert(
-            object=f"{response.status_code} {response.reason_phrase}", severity=severity
-        )
+        status = pmui.Alert(object=f"{response.status_code} {response.reason_phrase}", severity=severity)
         content_type = response.headers.get("content-type", "")
         if "application/json" in content_type:
             try:
@@ -364,6 +360,7 @@ class OpenAPIForm(pn.viewable.Viewer):
         return [status, body]
 
     def __panel__(self) -> Any:
+        """Return the UI."""
         return pmui.Row(
             self.form,
             self.response,

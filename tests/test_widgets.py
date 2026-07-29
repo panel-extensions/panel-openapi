@@ -68,9 +68,7 @@ def test_default_applied():
 
 
 def test_bounds_applied():
-    widget = schema_to_widget(
-        "field", Schema.model_validate({"type": "integer", "minimum": 2, "maximum": 8})
-    )
+    widget = schema_to_widget("field", Schema.model_validate({"type": "integer", "minimum": 2, "maximum": 8}))
     assert widget.start == 2
     assert widget.end == 8
 

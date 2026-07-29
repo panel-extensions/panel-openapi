@@ -25,19 +25,13 @@ SPEC = {
                 "responses": {
                     "200": {
                         "description": "The article.",
-                        "content": {
-                            "application/json": {"schema": {"$ref": "#/components/schemas/Article"}}
-                        },
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Article"}}},
                     }
                 },
             },
             "patch": {
                 "summary": "Update an article",
-                "requestBody": {
-                    "content": {
-                        "application/json": {"schema": {"$ref": "#/components/schemas/Article"}}
-                    }
-                },
+                "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Article"}}}},
                 "responses": {"200": {"description": "The updated article."}},
             },
         }

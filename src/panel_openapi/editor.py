@@ -16,7 +16,9 @@ import param
 from openapi_pydantic import OpenAPI
 
 from .form import OpenAPIForm
-from .schema import find_update_operations, get_operation, load_openapi
+from .schema import find_update_operations
+from .schema import get_operation
+from .schema import load_openapi
 
 # Methods whose body is a partial update, so only changed fields are sent.
 _PARTIAL_METHODS = ("patch",)
@@ -123,9 +125,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         show_lookup: bool = True,
         **params: Any,
     ) -> None:
-        super().__init__(
-            base_url=base_url, path=path, method=method, update_method=update_method, **params
-        )
+        super().__init__(base_url=base_url, path=path, method=method, update_method=update_method, **params)
         self._openapi = load_openapi(openapi)
         self._headers = dict(headers or {})
         self._show_lookup = show_lookup
@@ -221,9 +221,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         the value across instead.
         """
         assert self.editor is not None
-        shared = {
-            field.name for field, _ in self.lookup._widgets if field.location == "path"
-        }
+        shared = {field.name for field, _ in self.lookup._widgets if field.location == "path"}
         for field, widget in self.editor._widgets:
             if field.location == "path" and field.name in shared:
                 widget.visible = False
@@ -242,9 +240,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         return {
             field.name: widget.value
             for field, widget in self.lookup._widgets
-            if field.location == "path"
-            and (not hidden_only or field.name in self._hidden)
-            and widget.value not in (None, "")
+            if field.location == "path" and (not hidden_only or field.name in self._hidden) and widget.value not in (None, "")
         }
 
     async def load(self, **lookup: Any) -> dict[str, Any] | None:
@@ -266,10 +262,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         if lookup:
             unknown = set(lookup) - set(self.lookup.widgets)
             if unknown:
-                raise ValueError(
-                    f"Unknown lookup fields: {', '.join(sorted(unknown))}. "
-                    f"Available: {', '.join(self.lookup.widgets)}."
-                )
+                raise ValueError(f"Unknown lookup fields: {', '.join(sorted(unknown))}. " f"Available: {', '.join(self.lookup.widgets)}.")
             self.lookup.populate(lookup)
 
         response = await self.lookup.submit()
@@ -290,9 +283,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
             self._set_status("Response was not JSON, so there is nothing to edit.", "error")
             return None
         if not isinstance(record, dict):
-            self._set_status(
-                "Response was not a JSON object, so it cannot populate a form.", "error"
-            )
+            self._set_status("Response was not a JSON object, so it cannot populate a form.", "error")
             return None
 
         self.populate(record)
@@ -320,14 +311,12 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         self._watch_edits()
         self.editor._submit_button.disabled = False
         if skipped:
-            self._set_status(
-                f"Loaded. Not editable here: {', '.join(sorted(skipped))}.", "info"
-            )
+            self._set_status(f"Loaded. Not editable here: {', '.join(sorted(skipped))}.", "info")
         else:
             self._set_status("Loaded. Edit the fields and save.", "success")
 
     def diff(self) -> dict[str, tuple[Any, Any]]:
-        """The edits pending against the loaded record.
+        """Return the edits pending against the loaded record.
 
         Returns
         -------
@@ -351,11 +340,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         """Body fields whose value differs from the loaded record."""
         assert self.editor is not None
         record = self.record or {}
-        return {
-            name: value
-            for name, value in self.editor.get_values("body").items()
-            if name not in record or record[name] != value
-        }
+        return {name: value for name, value in self.editor.get_values("body").items() if name not in record or record[name] != value}
 
     async def save(self) -> dict[str, Any] | None:
         """Send the edits and adopt the response as the new record.
@@ -430,11 +415,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         rows: list[Any] = []
         for name, (old, new) in sorted(changes.items()):
             label = "Set" if old is None and name not in (self.record or {}) else "Update"
-            rows.append(
-                pmui.Typography(
-                    f"**{label} {name}**: `{_short(old)}` → `{_short(new)}`", variant="body2"
-                )
-            )
+            rows.append(pmui.Typography(f"**{label} {name}**: `{_short(old)}` → `{_short(new)}`", variant="body2"))
         method = (self.update_method or "").upper()
         return [
             pmui.Typography(
@@ -448,6 +429,7 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
         self._status[:] = [pmui.Alert(object=message, severity=severity)]
 
     def __panel__(self) -> Any:
+        """Render the lookup form, the status area and the edit form."""
         items: list[Any] = []
         if self._show_lookup:
             items += [
@@ -456,17 +438,11 @@ class OpenAPIRecordEditor(pn.viewable.Viewer):
             ]
         items.append(self._status)
         if self.editor is None:
-            items.append(
-                pmui.Alert(
-                    object=f"No update operation found on {self.path}.", severity="warning"
-                )
-            )
+            items.append(pmui.Alert(object=f"No update operation found on {self.path}.", severity="warning"))
         else:
             items += [
                 pmui.Divider(),
-                pmui.Typography(
-                    f"Edit ({self.update_method.upper()} {self.path})", variant="subtitle2"
-                ),
+                pmui.Typography(f"Edit ({self.update_method.upper()} {self.path})", variant="subtitle2"),
                 self.editor.form,
                 self.editor.response,
                 self._dialog,

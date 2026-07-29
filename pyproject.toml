@@ -120,11 +120,16 @@ select = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Ignore all directories named `tests`.
 "tests/**" = ["D"]
 # Ignore all files that end in `_test.py`.
 "*_test.py" = ["D"]
+# Documentation snippets are apps, not library code: they are read for their
+# Panel usage, and docstrings on their callbacks would only be noise.
+"docs/**" = ["D103"]
+# The screenshot harness is a script and reports progress on stdout.
+"docs/screenshots.py" = ["D103", "T201"]
 
 [tool.ruff.lint.isort]
 force-single-line = true

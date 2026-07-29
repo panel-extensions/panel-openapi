@@ -62,11 +62,7 @@ def petstore_spec():
                     "operationId": "createPet",
                     "requestBody": {
                         "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/Pet"}
-                            }
-                        },
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}},
                     },
                     "responses": {"200": {"description": "ok"}},
                 },

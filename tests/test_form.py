@@ -115,9 +115,7 @@ def test_title_derived_from_operation(petstore_spec):
 
 
 def test_explicit_title_survives_operation_change(petstore_spec):
-    form = OpenAPIForm(
-        petstore_spec, "https://api.example.com", "/pets/{petId}", "get", title="Fixed"
-    )
+    form = OpenAPIForm(petstore_spec, "https://api.example.com", "/pets/{petId}", "get", title="Fixed")
     form.method = "post"
     assert form.title == "Fixed"
 
@@ -220,9 +218,7 @@ def test_populate_coerces_datetime():
                             "application/json": {
                                 "schema": {
                                     "type": "object",
-                                    "properties": {
-                                        "at": {"type": "string", "format": "date-time"}
-                                    },
+                                    "properties": {"at": {"type": "string", "format": "date-time"}},
                                 }
                             }
                         }

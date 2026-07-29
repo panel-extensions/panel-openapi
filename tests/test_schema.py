@@ -2,14 +2,12 @@
 
 import pytest
 
-from panel_openapi.schema import (
-    collect_fields,
-    find_update_operations,
-    get_operation,
-    load_openapi,
-    resolve_ref,
-    response_schema,
-)
+from panel_openapi.schema import collect_fields
+from panel_openapi.schema import find_update_operations
+from panel_openapi.schema import get_operation
+from panel_openapi.schema import load_openapi
+from panel_openapi.schema import resolve_ref
+from panel_openapi.schema import response_schema
 
 
 def test_load_openapi_from_dict(petstore_spec):
@@ -106,9 +104,7 @@ def test_collect_fields_flags_read_only(record_spec):
 
 def test_collect_fields_skip_read_only(record_spec):
     api = load_openapi(record_spec)
-    fields = collect_fields(
-        api, get_operation(api, "/tasks/{taskId}", "patch"), skip_read_only=True
-    )
+    fields = collect_fields(api, get_operation(api, "/tasks/{taskId}", "patch"), skip_read_only=True)
     assert "id" not in [f.name for f in fields]
 
 
@@ -126,9 +122,7 @@ PATH_LEVEL_PARAM_SPEC = {
                 }
             ],
             "get": {
-                "parameters": [
-                    {"name": "verbose", "in": "query", "schema": {"type": "boolean"}}
-                ],
+                "parameters": [{"name": "verbose", "in": "query", "schema": {"type": "boolean"}}],
                 "responses": {"200": {"description": "ok"}},
             },
             "delete": {"responses": {"204": {"description": "gone"}}},

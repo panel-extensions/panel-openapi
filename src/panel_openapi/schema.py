@@ -9,10 +9,16 @@ that the widget layer can turn into inputs.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 import httpx
-from openapi_pydantic import OpenAPI, Operation, Parameter, Reference, Schema, parse_obj
+from openapi_pydantic import OpenAPI
+from openapi_pydantic import Operation
+from openapi_pydantic import Parameter
+from openapi_pydantic import Reference
+from openapi_pydantic import Schema
+from openapi_pydantic import parse_obj
 from openapi_pydantic.v3.v3_0 import Reference as ReferenceV30
 from openapi_pydantic.v3.v3_1 import Reference as ReferenceV31
 
@@ -79,9 +85,7 @@ def load_openapi(source: str | dict[str, Any] | OpenAPI) -> OpenAPI:
     return parse_obj(source)
 
 
-def resolve_ref(
-    openapi: OpenAPI, obj: Reference | Schema | Parameter | None
-) -> Any:
+def resolve_ref(openapi: OpenAPI, obj: Reference | Schema | Parameter | None) -> Any:
     """Resolve a ``$ref`` against the document's components.
 
     Parameters
@@ -149,14 +153,8 @@ def get_operation(openapi: OpenAPI, path: str, method: str) -> Operation:
     method = method.lower()
     operation = getattr(path_item, method, None)
     if operation is None:
-        available = ", ".join(
-            m for m in ("get", "put", "post", "delete", "options", "head", "patch", "trace")
-            if getattr(path_item, m, None) is not None
-        )
-        raise KeyError(
-            f"Method {method.upper()!r} not defined for {path!r}. "
-            f"Available methods: {available or 'none'}."
-        )
+        available = ", ".join(m for m in ("get", "put", "post", "delete", "options", "head", "patch", "trace") if getattr(path_item, m, None) is not None)
+        raise KeyError(f"Method {method.upper()!r} not defined for {path!r}. " f"Available methods: {available or 'none'}.")
     return _with_path_parameters(openapi, path_item, operation)
 
 
@@ -167,9 +165,7 @@ def _parameter_key(openapi: OpenAPI, parameter: Parameter | Reference) -> tuple[
     return (resolved.name, str(location))
 
 
-def _with_path_parameters(
-    openapi: OpenAPI, path_item: Any, operation: Operation
-) -> Operation:
+def _with_path_parameters(openapi: OpenAPI, path_item: Any, operation: Operation) -> Operation:
     """Merge parameters declared on the path item into the operation.
 
     A path item may declare parameters shared by all its operations, which is
@@ -269,16 +265,10 @@ def find_update_operations(openapi: OpenAPI, path: str) -> list[str]:
     path_item = (openapi.paths or {}).get(path)
     if path_item is None:
         return []
-    return [
-        method
-        for method in _UPDATE_METHODS
-        if getattr(path_item, method, None) is not None
-    ]
+    return [method for method in _UPDATE_METHODS if getattr(path_item, method, None) is not None]
 
 
-def collect_fields(
-    openapi: OpenAPI, operation: Operation, skip_read_only: bool = False
-) -> list[Field]:
+def collect_fields(openapi: OpenAPI, operation: Operation, skip_read_only: bool = False) -> list[Field]:
     """Flatten an operation's parameters and JSON body into fields.
 
     Parameters

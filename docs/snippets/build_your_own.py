@@ -3,7 +3,10 @@
 import panel as pn
 import panel_material_ui as pmui
 
-from panel_openapi import collect_fields, get_operation, load_openapi, schema_to_widget
+from panel_openapi import collect_fields
+from panel_openapi import get_operation
+from panel_openapi import load_openapi
+from panel_openapi import schema_to_widget
 
 pn.extension()
 
@@ -71,11 +74,7 @@ def show_request(event=None):
 
 pmui.Row(
     pmui.Column(
-        *[
-            item
-            for location, group in sections.items()
-            for item in (pmui.Typography(location.title(), variant="subtitle2"), *group)
-        ],
+        *[item for location, group in sections.items() for item in (pmui.Typography(location.title(), variant="subtitle2"), *group)],
         pmui.Button(label="Preview request", variant="contained", on_click=show_request),
         width=380,
     ),

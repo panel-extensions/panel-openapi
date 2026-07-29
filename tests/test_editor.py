@@ -35,9 +35,7 @@ def api(monkeypatch):
 
 
 def make_editor(record_spec, **kwargs):
-    return OpenAPIRecordEditor(
-        record_spec, base_url="https://api.example.com", path="/tasks/{taskId}", **kwargs
-    )
+    return OpenAPIRecordEditor(record_spec, base_url="https://api.example.com", path="/tasks/{taskId}", **kwargs)
 
 
 def test_auto_detects_patch(record_spec):
@@ -52,9 +50,7 @@ def test_explicit_update_method(record_spec):
 
 
 def test_no_update_operation(record_spec):
-    editor = OpenAPIRecordEditor(
-        record_spec, base_url="https://api.example.com", path="/notes/{noteId}"
-    )
+    editor = OpenAPIRecordEditor(record_spec, base_url="https://api.example.com", path="/notes/{noteId}")
     assert editor.update_method is None
     assert editor.editor is None
 
@@ -186,9 +182,7 @@ async def test_non_object_response_reports(record_spec, monkeypatch):
 
 
 async def test_save_without_update_operation_raises(record_spec):
-    editor = OpenAPIRecordEditor(
-        record_spec, base_url="https://api.example.com", path="/notes/{noteId}"
-    )
+    editor = OpenAPIRecordEditor(record_spec, base_url="https://api.example.com", path="/notes/{noteId}")
     with pytest.raises(RuntimeError, match="No update operation"):
         await editor.save()
 

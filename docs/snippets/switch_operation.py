@@ -3,7 +3,8 @@
 import panel as pn
 import panel_material_ui as pmui
 
-from panel_openapi import OpenAPIForm, load_openapi
+from panel_openapi import OpenAPIForm
+from panel_openapi import load_openapi
 
 pn.extension()
 
