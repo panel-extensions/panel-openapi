@@ -1,44 +1,28 @@
-[project]
+[workspace]
 name = "panel-openapi"
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
 
 [tasks]
 postinstall = "pip install --no-build-isolation --no-deps --disable-pip-version-check -e ."
+pre-commit-install = "pre-commit install"
+pre-commit-run = "pre-commit run -a"
 
+# Runtime dependencies, so every environment can import the package. The
+# editable install below is run with --no-deps, so anything missing here is
+# missing at import time.
 [dependencies]
 python = ">=3.10"
-
-[host-dependencies]
+panel = ">=1.5.0"
+panel-material-ui = ">=0.4.0"
+openapi-pydantic = ">=0.5.0"
+httpx = "*"
+packaging = "*"
 pip = "*"
 hatchling = "*"
 hatch-vcs = "*"
-panel = ">=1.5.0"
 setuptools = ">=61"
 setuptools-scm = "*"
-
-[feature.test.dependencies]
-pytest = ">=6"
-pytest-cov = "*"
-mypy = "*"
-[feature.test.tasks]
-test = "pytest"
-test-coverage = "pytest --cov=panel_openapi --cov-report=xml --cov-report=term-missing"
-
-[feature.build.dependencies]
-python-build = "*"
-twine = "*"
-wheel = "*"
-[feature.build.tasks]
-build-wheel = "python -m build --no-isolation ."
-check-wheel = "twine check dist/*"
-
-[feature.lint.dependencies]
-pre-commit = "*"
-
-[feature.lint.tasks]
-lint = "pre-commit run --all-files"
-lint-install = "pre-commit install"
 
 [feature.py310.dependencies]
 python = "3.10.*"
@@ -46,41 +30,70 @@ python = "3.10.*"
 python = "3.11.*"
 [feature.py312.dependencies]
 python = "3.12.*"
+[feature.py313.dependencies]
+python = "3.13.*"
+[feature.py313.activation.env]
+COVERAGE_CORE = "sysmon"
 
-[feature.test-ui]
-channels = ["microsoft"]
+[environments]
+default = ["py312", "test"]
+test-310 = ["py310", "test"]
+test-311 = ["py311", "test"]
+test-312 = ["py312", "test"]
+test-313 = ["py313", "test"]
+docs = ["py312", "docs"]
+build = ["py312", "build"]
+lint = { features = ["lint"], no-default-feature = true }
 
-[feature.test-ui.dependencies]
-playwright = { version = "*", channel = "microsoft" }
-pytest-playwright = { version = "*", channel = "microsoft" }
+# =============================================
+# ================== TEST =====================
+# =============================================
+
+[feature.test.dependencies]
+pytest = ">=6"
 pytest-asyncio = "*"
-pytest-rerunfailures = "*"
-pytest-xdist = "*"
-jupyter_server = "*"
-esbuild = "*"
-packaging = "*"
+pytest-cov = "*"
+mypy = "*"
 
-[feature.test-ui.tasks]
-_install-ui = 'playwright install chromium'
+[feature.test.tasks]
+test = { cmd = "pytest", depends-on = ["postinstall"] }
+test-coverage = { cmd = "pytest --cov=panel_openapi --cov-report=xml --cov-report=term-missing", depends-on = [
+  "postinstall",
+] }
 
-[feature.test-ui.tasks.test-ui]
-cmd = 'pytest tests/ui --ui --browser chromium -n logical --dist loadgroup --reruns 3 --reruns-delay 10'
-depends-on = ["_install-ui"]
+# =============================================
+# =================== DOCS ====================
+# =============================================
 
 [feature.docs.dependencies]
 zensical = "*"
+mkdocstrings = "*"
 mkdocstrings-python = "*"
 
 [feature.docs.tasks]
-docs = "zensical serve"
-docs-build = "zensical build"
+docs = { cmd = "zensical serve", depends-on = ["postinstall"] }
+docs-build = { cmd = "zensical build", depends-on = ["postinstall"] }
 
-[environments]
-default = ["test"]
-py310 = ["py310", "test"]
-py311 = ["py311", "test"]
-py312 = ["py312", "test"]
-test-ui = ["py312", "test", "test-ui"]
-docs = ["docs"]
-build = ["build"]
-lint = { features = ["lint"], no-default-feature = true }
+# =============================================
+# ================== BUILD ====================
+# =============================================
+
+[feature.build.dependencies]
+python-build = "*"
+twine = "*"
+wheel = "*"
+
+[feature.build.tasks]
+build-wheel = "python -m build --no-isolation ."
+check-wheel = "twine check dist/*"
+
+# =============================================
+# ================== LINT =====================
+# =============================================
+
+[feature.lint.dependencies]
+pre-commit = "*"
+
+[feature.lint.tasks]
+lint = "pre-commit run --all-files"
+lint-install = "pre-commit install"

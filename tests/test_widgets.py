@@ -26,11 +26,40 @@ from panel_openapi.widgets import schema_to_widget
         ({"type": "object"}, pmui.TextAreaInput),
         ({}, pmui.TextAreaInput),
         ({"type": ["string", "null"]}, pmui.TextInput),
+        # anyOf with a single non-null branch is how pydantic renders `T | None`,
+        # which covers most fields of a PATCH request model.
+        ({"anyOf": [{"type": "string"}, {"type": "null"}]}, pmui.TextInput),
+        ({"anyOf": [{"type": "boolean"}, {"type": "null"}]}, pmui.Checkbox),
+        ({"oneOf": [{"type": "integer"}, {"type": "null"}]}, pmui.IntInput),
+        (
+            {"anyOf": [{"type": "string", "enum": ["a", "b"]}, {"type": "null"}]},
+            pmui.RadioButtonGroup,
+        ),
+        # A genuine union of two concrete types stays a JSON text area.
+        ({"anyOf": [{"type": "string"}, {"type": "integer"}]}, pmui.TextAreaInput),
     ],
 )
 def test_widget_type(spec, expected):
     widget = schema_to_widget("field", Schema.model_validate(spec))
     assert isinstance(widget, expected)
+
+
+def test_nullable_union_keeps_outer_metadata():
+    widget = schema_to_widget(
+        "field",
+        Schema.model_validate(
+            {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "title": "Notes",
+                "description": "Free text.",
+                "default": "hi",
+            }
+        ),
+    )
+    assert isinstance(widget, pmui.TextInput)
+    assert widget.label == "Notes"
+    assert widget.description == "Free text."
+    assert widget.value == "hi"
 
 
 def test_default_applied():
@@ -39,9 +68,7 @@ def test_default_applied():
 
 
 def test_bounds_applied():
-    widget = schema_to_widget(
-        "field", Schema.model_validate({"type": "integer", "minimum": 2, "maximum": 8})
-    )
+    widget = schema_to_widget("field", Schema.model_validate({"type": "integer", "minimum": 2, "maximum": 8}))
     assert widget.start == 2
     assert widget.end == 8
 

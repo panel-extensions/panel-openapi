@@ -9,10 +9,16 @@ that the widget layer can turn into inputs.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 import httpx
-from openapi_pydantic import OpenAPI, Operation, Parameter, Reference, Schema, parse_obj
+from openapi_pydantic import OpenAPI
+from openapi_pydantic import Operation
+from openapi_pydantic import Parameter
+from openapi_pydantic import Reference
+from openapi_pydantic import Schema
+from openapi_pydantic import parse_obj
 from openapi_pydantic.v3.v3_0 import Reference as ReferenceV30
 from openapi_pydantic.v3.v3_1 import Reference as ReferenceV31
 
@@ -40,12 +46,16 @@ class Field:
         The resolved JSON schema describing the value.
     required : bool
         Whether the field must be provided.
+    read_only : bool
+        Whether the schema marks the value ``readOnly``. Such fields are
+        returned by the server but never sent in a request.
     """
 
     name: str
     location: FieldLocation
     schema: Schema
     required: bool = False
+    read_only: bool = False
 
 
 def load_openapi(source: str | dict[str, Any] | OpenAPI) -> OpenAPI:
@@ -75,9 +85,7 @@ def load_openapi(source: str | dict[str, Any] | OpenAPI) -> OpenAPI:
     return parse_obj(source)
 
 
-def resolve_ref(
-    openapi: OpenAPI, obj: Reference | Schema | Parameter | None
-) -> Any:
+def resolve_ref(openapi: OpenAPI, obj: Reference | Schema | Parameter | None) -> Any:
     """Resolve a ``$ref`` against the document's components.
 
     Parameters
@@ -128,7 +136,8 @@ def get_operation(openapi: OpenAPI, path: str, method: str) -> Operation:
     Returns
     -------
     Operation
-        The matching operation.
+        The matching operation, with any parameters declared on the path item
+        merged into its own.
 
     Raises
     ------
@@ -144,15 +153,45 @@ def get_operation(openapi: OpenAPI, path: str, method: str) -> Operation:
     method = method.lower()
     operation = getattr(path_item, method, None)
     if operation is None:
-        available = ", ".join(
-            m for m in ("get", "put", "post", "delete", "options", "head", "patch", "trace")
-            if getattr(path_item, m, None) is not None
-        )
-        raise KeyError(
-            f"Method {method.upper()!r} not defined for {path!r}. "
-            f"Available methods: {available or 'none'}."
-        )
-    return operation
+        available = ", ".join(m for m in ("get", "put", "post", "delete", "options", "head", "patch", "trace") if getattr(path_item, m, None) is not None)
+        raise KeyError(f"Method {method.upper()!r} not defined for {path!r}. " f"Available methods: {available or 'none'}.")
+    return _with_path_parameters(openapi, path_item, operation)
+
+
+def _parameter_key(openapi: OpenAPI, parameter: Parameter | Reference) -> tuple[str, str]:
+    """Identify a parameter the way the spec does, by name and location."""
+    resolved = resolve_ref(openapi, parameter)
+    location = getattr(resolved.param_in, "value", resolved.param_in)
+    return (resolved.name, str(location))
+
+
+def _with_path_parameters(openapi: OpenAPI, path_item: Any, operation: Operation) -> Operation:
+    """Merge parameters declared on the path item into the operation.
+
+    A path item may declare parameters shared by all its operations, which is
+    how a hand-written spec usually expresses a path parameter like ``petId``.
+    The operation's own parameters win where both declare the same name and
+    location, as the specification requires.
+    """
+    shared = getattr(path_item, "parameters", None)
+    if not shared:
+        return operation
+    own = {_parameter_key(openapi, p) for p in operation.parameters or []}
+    inherited = [p for p in shared if _parameter_key(openapi, p) not in own]
+    if not inherited:
+        return operation
+    # A copy, so the document keeps describing what it was given.
+    merged = operation.model_copy()
+    merged.parameters = [*inherited, *(operation.parameters or [])]
+    return merged
+
+
+def _json_schema(openapi: OpenAPI, content: dict[str, Any] | None) -> Schema | None:
+    """Return the schema of the first JSON media type in a content mapping."""
+    for media_type in _JSON_MEDIA_TYPES:
+        if media_type in (content or {}):
+            return resolve_ref(openapi, content[media_type].media_type_schema)
+    return None
 
 
 def _body_schema(openapi: OpenAPI, operation: Operation) -> Schema | None:
@@ -160,14 +199,76 @@ def _body_schema(openapi: OpenAPI, operation: Operation) -> Schema | None:
     request_body = resolve_ref(openapi, operation.requestBody)
     if request_body is None:
         return None
-    content = request_body.content or {}
-    for media_type in _JSON_MEDIA_TYPES:
-        if media_type in content:
-            return resolve_ref(openapi, content[media_type].media_type_schema)
+    return _json_schema(openapi, request_body.content)
+
+
+def response_schema(openapi: OpenAPI, operation: Operation) -> Schema | None:
+    """Return the JSON schema of an operation's success response.
+
+    The lowest 2xx response that declares a JSON body wins, falling back to a
+    ``default`` response. This is the schema of the record a ``GET`` returns,
+    which :class:`~panel_openapi.editor.OpenAPIRecordEditor` populates a form
+    from.
+
+    Parameters
+    ----------
+    openapi : OpenAPI
+        The document the operation belongs to.
+    operation : Operation
+        The operation to inspect.
+
+    Returns
+    -------
+    Schema or None
+        The response schema, or ``None`` if the operation declares no JSON
+        success response.
+    """
+    responses = operation.responses or {}
+    codes = sorted(str(code) for code in responses if str(code).startswith("2"))
+    for code in [*codes, "default"]:
+        if code not in responses:
+            continue
+        response = resolve_ref(openapi, responses[code])
+        schema = _json_schema(openapi, getattr(response, "content", None))
+        if schema is not None:
+            return schema
     return None
 
 
-def collect_fields(openapi: OpenAPI, operation: Operation) -> list[Field]:
+# Methods that can update an existing record, in the order they are preferred.
+# PATCH is a partial update, PUT a full replace, and POST is only an update by
+# convention (some APIs use it to create a subresource instead).
+_UPDATE_METHODS = ("patch", "put", "post")
+
+
+def find_update_operations(openapi: OpenAPI, path: str) -> list[str]:
+    """Return the methods on ``path`` that could update the record it returns.
+
+    Only the path is used as evidence, since request and response schemas
+    routinely differ for the same record: the Swagger Petstore reuses ``Pet``
+    for both, while FastAPI typically responds with a model carrying
+    server-assigned fields that the request model omits.
+
+    Parameters
+    ----------
+    openapi : OpenAPI
+        The document to inspect.
+    path : str
+        The templated path whose operations are considered.
+
+    Returns
+    -------
+    list of str
+        Matching methods, most likely first (``patch``, then ``put``, then
+        ``post``). Empty if the path defines none of them.
+    """
+    path_item = (openapi.paths or {}).get(path)
+    if path_item is None:
+        return []
+    return [method for method in _UPDATE_METHODS if getattr(path_item, method, None) is not None]
+
+
+def collect_fields(openapi: OpenAPI, operation: Operation, skip_read_only: bool = False) -> list[Field]:
     """Flatten an operation's parameters and JSON body into fields.
 
     Parameters
@@ -176,6 +277,10 @@ def collect_fields(openapi: OpenAPI, operation: Operation) -> list[Field]:
         The document the operation belongs to.
     operation : Operation
         The operation to introspect.
+    skip_read_only : bool
+        Whether to drop body properties marked ``readOnly`` entirely. When
+        ``False`` they are still returned, flagged via ``Field.read_only`` so
+        callers can show them without sending them.
 
     Returns
     -------
@@ -191,6 +296,11 @@ def collect_fields(openapi: OpenAPI, operation: Operation) -> list[Field]:
             # Cookie parameters are not supported.
             continue
         schema = resolve_ref(openapi, parameter.param_schema) or Schema()
+        if parameter.description and not schema.description:
+            # A parameter documents itself, while a body property documents
+            # itself through its schema. Copy it across so the widget layer only
+            # has to look in one place.
+            schema = schema.model_copy(update={"description": parameter.description})
         fields.append(
             Field(
                 name=parameter.name,
@@ -206,12 +316,17 @@ def collect_fields(openapi: OpenAPI, operation: Operation) -> list[Field]:
         properties = body_schema.properties or {}
         if properties:
             for prop_name, prop_schema in properties.items():
+                schema = resolve_ref(openapi, prop_schema) or Schema()
+                read_only = bool(schema.readOnly)
+                if skip_read_only and read_only:
+                    continue
                 fields.append(
                     Field(
                         name=prop_name,
                         location="body",
-                        schema=resolve_ref(openapi, prop_schema) or Schema(),
+                        schema=schema,
                         required=prop_name in required,
+                        read_only=read_only,
                     )
                 )
         else:
