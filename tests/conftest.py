@@ -92,6 +92,60 @@ def petstore_spec():
     }
 
 
+@pytest.fixture
+def record_spec():
+    """A spec with a readable record and both PATCH and PUT updates."""
+    task = {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+            "id": {"type": "integer", "readOnly": True},
+            "title": {"type": "string"},
+            "done": {"type": "boolean"},
+            "notes": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        },
+    }
+    operation = {
+        "parameters": [
+            {
+                "name": "taskId",
+                "in": "path",
+                "required": True,
+                "schema": {"type": "integer"},
+            }
+        ],
+        "responses": {
+            "200": {
+                "description": "ok",
+                "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Task"}}},
+            }
+        },
+    }
+    body = {
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Task"}}},
+        }
+    }
+    return {
+        # 3.1, since `anyOf` with a null branch is how pydantic and FastAPI
+        # express an optional field and is invalid in 3.0.
+        "openapi": "3.1.0",
+        "info": {"title": "Tasks", "version": "1.0.0"},
+        "paths": {
+            "/tasks/{taskId}": {
+                "get": {"summary": "Get a task", **operation},
+                "patch": {"summary": "Patch a task", **operation, **body},
+                "put": {"summary": "Replace a task", **operation, **body},
+            },
+            "/notes/{noteId}": {
+                "get": {"summary": "Get a note", **operation},
+            },
+        },
+        "components": {"schemas": {"Task": task}},
+    }
+
+
 @pytest.fixture(autouse=True)
 def module_cleanup():
     """Cleanup Panel extensions after each test."""

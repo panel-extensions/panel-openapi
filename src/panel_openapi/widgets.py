@@ -17,6 +17,51 @@ from openapi_pydantic import Schema
 _RADIO_THRESHOLD = 3
 
 
+def unwrap_nullable(schema: Schema) -> Schema:
+    """Collapse a nullable union to the single schema that carries the type.
+
+    ``anyOf``/``oneOf`` with exactly one non-null branch is how an optional
+    value is expressed in OpenAPI 3.0 and by pydantic for ``T | None``, which
+    covers most fields of a PATCH request model. Unwrapping it means such fields
+    get a real widget rather than a JSON text area. Genuine unions of two or more
+    types are left alone.
+
+    Parameters
+    ----------
+    schema : Schema
+        The schema to unwrap.
+
+    Returns
+    -------
+    Schema
+        The sole non-null branch with the outer title and description preserved,
+        or ``schema`` unchanged if it is not a nullable union.
+    """
+    branches = schema.anyOf or schema.oneOf
+    if not branches:
+        return schema
+    concrete = [b for b in branches if isinstance(b, Schema) and _raw_type(b) != "null"]
+    if len(concrete) != 1 or len(concrete) == len(branches):
+        return schema
+    inner = concrete[0].model_copy()
+    # The outer schema carries the field's own title/description/default.
+    inner.title = schema.title or inner.title
+    inner.description = schema.description or inner.description
+    if schema.default is not None:
+        inner.default = schema.default
+    return inner
+
+
+def _raw_type(schema: Schema) -> str | None:
+    """The schema's declared type, without collapsing lists."""
+    type_ = schema.type
+    if type_ is None:
+        return None
+    if isinstance(type_, list):
+        return None
+    return getattr(type_, "value", type_)
+
+
 def _schema_type(schema: Schema) -> str | None:
     """Return the primary non-null type of a schema.
 
@@ -133,6 +178,7 @@ def schema_to_widget(name: str, schema: Schema, required: bool = False) -> pmui.
         The widget best matching the schema. Values of type ``object`` or of an
         unknown type fall back to a JSON text area.
     """
+    schema = unwrap_nullable(schema)
     if schema.enum:
         widget = _enum_widget(name, schema)
     else:

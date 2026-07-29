@@ -7,6 +7,18 @@ repo_name = "panel-extensions/panel-openapi"
 edit_uri = "edit/main/docs/"
 nav = [
   {"Home" = "index.md"},
+  {"Quickstart" = "quickstart.md"},
+  {"How-to" = [
+    {"Build a Form" = "how-to/build-a-form.md"},
+    {"Load a Specification" = "how-to/load-a-spec.md"},
+    {"Understand Widget Mapping" = "how-to/widget-mapping.md"},
+    {"Switch Operations" = "how-to/switch-operations.md"},
+    {"Authenticate Requests" = "how-to/authenticate.md"},
+    {"Read and Submit Values" = "how-to/values.md"},
+    {"Edit Records" = "how-to/edit-records.md"},
+    {"Customize the Layout" = "how-to/custom-layout.md"},
+    {"Build Your Own Form" = "how-to/build-your-own.md"}
+  ]},
   {"Examples" = "examples.md"},
   {"Reference" = "reference/panel_openapi.md"}
 ]
@@ -71,6 +83,10 @@ custom_checkbox = true
 
 [project.markdown_extensions.pymdownx.snippets]
 url_download = true
+
+[project.markdown_extensions.pymdownx.emoji]
+emoji_index = "zensical.extensions.emoji.twemoji"
+emoji_generator = "zensical.extensions.emoji.to_svg"
 
 [project.markdown_extensions.admonition]
 
